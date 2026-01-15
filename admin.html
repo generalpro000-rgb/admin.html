@@ -6,82 +6,103 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
-        body { background: #000; color: #00ff41; font-family: 'Courier New', monospace; padding: 20px; text-align: center; }
-        .login-gate { border: 2px solid #00ff41; padding: 40px; display: inline-block; margin-top: 100px; }
+        :root { --neon: #00ff41; }
+        body { background: #000; color: var(--neon); font-family: 'Courier New', monospace; padding: 20px; text-align: center; }
+        .gate { border: 2px solid var(--neon); padding: 40px; display: inline-block; margin-top: 100px; background: #050505; }
         .dashboard { display: none; text-align: right; max-width: 800px; margin: auto; }
-        .card { border: 1px solid #00ff41; padding: 15px; margin: 10px 0; background: #0a0a0a; }
-        input { background: #000; border: 1px solid #00ff41; color: #fff; padding: 10px; margin: 10px; }
-        button { background: #00ff41; color: #000; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; }
+        .card { border: 1px solid var(--neon); padding: 15px; margin: 10px 0; background: #0a0a0a; position: relative; }
+        input { background: #000; border: 1px solid var(--neon); color: #fff; padding: 10px; margin: 10px; text-align: center; }
+        button { background: var(--neon); color: #000; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; }
         .btn-red { background: #ff3e3e; color: #fff; }
-        h2 { border-bottom: 2px solid #00ff41; padding-bottom: 10px; }
+        h2 { border-bottom: 2px solid var(--neon); padding-bottom: 10px; margin-top: 30px; }
+        .pts-badge { position: absolute; left: 15px; top: 15px; background: #222; padding: 5px; font-size: 0.8rem; }
     </style>
 </head>
 <body>
 
-    <div id="gate" class="login-gate">
-        <h2>الدخول للنظام 🔐</h2>
-        <input type="password" id="pass" placeholder="كلمة السر">
+    <div id="login-gate" class="gate">
+        <h2>نظام إدارة ماهر 🔐</h2>
+        <p>أدخل مفتاح العبور:</p>
+        <input type="password" id="admin-pass" placeholder="PASSWORD">
         <br>
-        <button onclick="login()">دخول</button>
+        <button onclick="checkAccess()">دخول النظام</button>
     </div>
 
-    <div id="dash" class="dashboard">
-        <h1>لوحة تحكم ماهر ⚙️</h1>
+    <div id="admin-dash" class="dashboard">
+        <h1>لوحة التحكم المركزية ⚙️</h1>
         
-        <h2>📥 طلبات التفعيل الجديدة</h2>
-        <div id="active-list">جاري التحميل...</div>
+        <h2>📥 طلبات التفعيل (D17 / Codes)</h2>
+        <div id="activation-list">جاري مزامنة البيانات...</div>
 
-        <h2>💰 طلبات السحب (1000 نقطة)</h2>
-        <div id="withdraw-list">لا توجد طلبات سحب.</div>
+        <h2>💰 طلبات سحب الأرباح (10 DT)</h2>
+        <div id="withdraw-list">لا توجد طلبات سحب حالياً.</div>
+
+        <button onclick="location.reload()" style="margin-top:30px; width:100%; background:#222; color:#fff;">تحديث يدوي 🔄</button>
     </div>
 
 <script>
-    // كلمة السر الخاصة بك
-    const SECRET = "MAHER2024"; 
+    // كلمة السر الافتراضية
+    const MASTER_KEY = "MAHER2024"; 
 
-    function login() {
-        if(document.getElementById('pass').value === SECRET) {
-            document.getElementById('gate').style.display = 'none';
-            document.getElementById('dash').style.display = 'block';
-            startAdmin();
-        } else { alert("خطأ في كلمة السر!"); }
+    function checkAccess() {
+        const input = document.getElementById('admin-pass').value;
+        if (input === MASTER_KEY) {
+            document.getElementById('login-gate').style.display = 'none';
+            document.getElementById('admin-dash').style.display = 'block';
+            initFirebase();
+        } else {
+            alert("⚠️ كلمة سر خاطئة!");
+        }
     }
 
-    const firebaseConfig = { databaseURL: "https://m-token-5ce65-default-rtdb.europe-west1.firebasedatabase.app/" };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    function initFirebase() {
+        const firebaseConfig = { databaseURL: "https://m-token-5ce65-default-rtdb.europe-west1.firebasedatabase.app/" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-    function startAdmin() {
-        // مراقبة طلبات التفعيل
-        db.ref('active_requests').on('value', (snap) => {
-            const list = document.getElementById('active-list');
+        // عرض طلبات التفعيل من 'test_entries' كما في صورتك
+        db.ref('test_entries').on('value', (snap) => {
+            const list = document.getElementById('activation-list');
             list.innerHTML = '';
             snap.forEach((child) => {
-                const d = child.val();
-                list.innerHTML += `<div class="card">
-                    كود D17: <b>${d.code}</b> | حالة: ${d.approved ? '✅ مفعل' : '⏳ معلق'}<br>
-                    <button onclick="approve('${child.key}')">موافقة وتفعيل ✅</button>
-                    <button class="btn-red" onclick="remove('active_requests','${child.key}')">حذف ❌</button>
-                </div>`;
+                const data = child.val();
+                list.innerHTML += `
+                    <div class="card">
+                        <p>📦 كود العملية: <strong>${data.code_sent}</strong></p>
+                        <p>الحالة الحالية: ${data.status}</p>
+                        <button onclick="approveRequest('${child.key}')">تفعيل الآن ✅</button>
+                        <button class="btn-red" onclick="deleteData('test_entries','${child.key}')">حذف ❌</button>
+                    </div>`;
             });
         });
 
-        // مراقبة طلبات السحب
+        // عرض طلبات السحب
         db.ref('withdraw_requests').on('value', (snap) => {
             const list = document.getElementById('withdraw-list');
             list.innerHTML = '';
             snap.forEach((child) => {
-                const d = child.val();
-                list.innerHTML += `<div class="card" style="border-color:red">
-                    هاتف: <b>${d.phone}</b> | نقاط: ${d.points}<br>
-                    <button class="btn-red" onclick="remove('withdraw_requests','${child.key}')">تم الدفع (حذف الطلب) ✅</button>
-                </div>`;
+                const data = child.val();
+                list.innerHTML += `
+                    <div class="card" style="border-color: #ff3e3e;">
+                        <p>📱 هاتف المستلم: <strong>${data.phone}</strong></p>
+                        <p>💵 المبلغ: 10 DT (${data.points} نقطة)</p>
+                        <button class="btn-red" onclick="deleteData('withdraw_requests','${child.key}')">تم الدفع (حذف) ✅</button>
+                    </div>`;
             });
         });
     }
 
-    function approve(id) { db.ref('active_requests/' + id).update({ approved: true }); alert("تم التفعيل!"); }
-    function remove(path, id) { if(confirm("حذف؟")) db.ref(path + '/' + id).remove(); }
+    function approveRequest(id) {
+        const db = firebase.database();
+        db.ref('test_entries/' + id).update({ status: "approved" });
+        alert("تم إرسال التفعيل للمستخدم!");
+    }
+
+    function deleteData(path, id) {
+        if(confirm("هل أنت متأكد من الحذف؟")) {
+            firebase.database().ref(path + '/' + id).remove();
+        }
+    }
 </script>
 </body>
 </html>
