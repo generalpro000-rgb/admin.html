@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>مدير ماهر | CONTROL PANEL</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <style>
+        body { background: #050505; color: #00ff41; font-family: 'Courier New', monospace; padding: 20px; }
+        .card { border: 1px solid #00ff41; padding: 15px; margin-bottom: 20px; background: #000; box-shadow: 0 0 10px rgba(0,255,65,0.1); }
+        .btn-approve { background: #00ff41; color: #000; border: none; padding: 5px 15px; cursor: pointer; font-weight: bold; }
+        .btn-delete { background: #ff3e3e; color: #fff; border: none; padding: 5px 15px; margin-right: 10px; cursor: pointer; }
+        h2 { border-bottom: 2px solid #00ff41; padding-bottom: 10px; }
+        .badge { background: #222; padding: 2px 8px; border-radius: 5px; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+
+    <h1>لوحة تحكم نظام ماهر ⚙️</h1>
+
+    <h2>🔔 طلبات التفعيل الجديدة (D17)</h2>
+    <div id="activation-list">جاري تحميل الطلبات...</div>
+
+    <h2>💰 طلبات سحب الأرباح (10 DT)</h2>
+    <div id="withdraw-list">لا توجد طلبات سحب حالياً.</div>
+
+<script>
+    const firebaseConfig = { databaseURL: "https://m-token-5ce65-default-rtdb.europe-west1.firebasedatabase.app/" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // 1. عرض طلبات التفعيل
+    db.ref('active_requests').on('value', (snapshot) => {
+        const list = document.getElementById('activation-list');
+        list.innerHTML = '';
+        snapshot.forEach((child) => {
+            const data = child.val();
+            list.innerHTML += `
+                <div class="card">
+                    <p><strong>الكود:</strong> ${data.code} <span class="badge">${data.time || ''}</span></p>
+                    <button class="btn-approve" onclick="approveUser('${child.key}')">تفعيل الآن ✅</button>
+                    <button class="btn-delete" onclick="deleteReq('active_requests', '${child.key}')">حذف ❌</button>
+                </div>`;
+        });
+        if (!list.innerHTML) list.innerHTML = "لا توجد طلبات معلقة.";
+    });
+
+    // 2. عرض طلبات السحب
+    db.ref('withdraw_requests').on('value', (snapshot) => {
+        const list = document.getElementById('withdraw-list');
+        list.innerHTML = '';
+        snapshot.forEach((child) => {
+            const data = child.val();
+            list.innerHTML += `
+                <div class="card" style="border-color: #ff3e3e;">
+                    <p><strong>رقم الهاتف:</strong> ${data.phone}</p>
+                    <p><strong>النقاط:</strong> ${data.points} نقطة</p>
+                    <button class="btn-delete" onclick="deleteReq('withdraw_requests', '${child.key}')">تم الدفع وحذف الطلب ✅</button>
+                </div>`;
+        });
+    });
+
+    function approveUser(id) {
+        db.ref('active_requests/' + id).update({ approved: true });
+        alert("تم إرسال الموافقة للمستخدم!");
+    }
+
+    function deleteReq(path, id) {
+        if(confirm("هل أنت متأكد؟")) {
+            db.ref(path + '/' + id).remove();
+        }
+    }
+</script>
+</body>
+</html>
